@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#121212" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="MyVibe — Stream music and videos with smart recommendations. Your personal music universe." />
+  
+  <title>MyVibe — Music & Video Streaming</title>
+  
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <script>
+    // Ensure clean cache during development
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(r) { r.unregister(); });
+      });
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div id="splash-screen">
+      <div class="splash-content">
+        <div class="splash-logo">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="30" fill="url(#splashGrad)" />
+            <path d="M26 20v24l20-12z" fill="#fff" />
+            <defs>
+              <linearGradient id="splashGrad" x1="0" y1="0" x2="64" y2="64">
+                <stop offset="0%" stop-color="#1DB954" />
+                <stop offset="100%" stop-color="#1ed760" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h1 class="splash-title">MyVibe</h1>
+        <p class="splash-subtitle">Your Music Universe</p>
+        <div class="splash-loader">
+          <div class="splash-loader-bar"></div>
+        </div>
+      </div>
+    </div>
+    
+    <main id="main-content" style="display:none;">
+      <div id="page-container"></div>
+    </main>
+    
+    <div id="mini-player" style="display:none;"></div>
+    <nav id="bottom-nav" style="display:none;"></nav>
+    
+    <div id="now-playing-overlay" class="overlay" style="display:none;"></div>
+    <div id="video-player-overlay" class="overlay" style="display:none;"></div>
+    
+    <div id="toast-container"></div>
+  </div>
+  
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

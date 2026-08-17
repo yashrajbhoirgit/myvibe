@@ -1,0 +1,20 @@
+{
+  "name": "MyVibe — Music & Video Streaming",
+  "short_name": "MyVibe",
+  "description": "Stream music and videos with smart recommendations. Your personal music universe.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#121212",
+  "background_color": "#121212",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["music", "entertainment"],
+  "lang": "en"
+}
