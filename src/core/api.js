@@ -26,6 +26,8 @@ async function fetchWithCache(url, ttl = CACHE_TTL) {
 }
 
 // ---- Curated Fallback & Instant Hits Catalog (20+ Top Hits) ----
+// Note: previewUrl here are iTunes 30-second previews used only as last resort.
+// The app will attempt to upgrade these to full songs via JioSaavn at runtime.
 const CURATED_HITS = [
   {
     id: 'cur_1',
@@ -42,6 +44,7 @@ const CURATED_HITS = [
     tempo: 171,
     energy: 0.9,
     source: 'curated',
+    isFullSong: false,
   },
   {
     id: 'cur_2',
@@ -242,6 +245,12 @@ export const itunes = {
   },
 
   async getTopChart(limit = 40) {
+    // First try JioSaavn for full songs
+    try {
+      const saavnTracks = await jiosaavn.getTopCharts(limit);
+      if (saavnTracks && saavnTracks.length >= 6) return saavnTracks;
+    } catch (e) {}
+    // Fallback to iTunes previews
     try {
       const queries = ['top hits', 'billboard 100', 'global hits'];
       const query = queries[Math.floor(Math.random() * queries.length)];
@@ -252,6 +261,11 @@ export const itunes = {
   },
 
   async getGenreTracks(genre, limit = 25) {
+    // Try JioSaavn first for full songs
+    try {
+      const saavnTracks = await jiosaavn.search(`${genre} hits`, limit);
+      if (saavnTracks && saavnTracks.length >= 3) return saavnTracks;
+    } catch (e) {}
     try {
       const tracks = await itunes.search(`${genre} hits`, limit);
       if (tracks && tracks.length >= 3) return tracks;
@@ -280,6 +294,7 @@ function mapItunesTrack(t) {
     duration: Math.round((t.trackTimeMillis || 30000) / 1000),
     previewUrl: t.previewUrl,
     source: 'itunes',
+    isFullSong: false,   // iTunes only gives 30s previews
     genre: genre,
     mood: mood,
     tempo: guessTempo(genre),
@@ -322,6 +337,7 @@ function mapDeezerTrack(t) {
     duration: t.duration || 30,
     previewUrl: t.preview || null,
     source: 'deezer',
+    isFullSong: false,   // Deezer free API only gives 30s previews
     genre: genre,
     mood: mood,
     tempo: guessTempo(genre),
@@ -340,6 +356,35 @@ export const jiosaavn = {
     } catch (e) {
       return [];
     }
+  },
+
+  async getTopCharts(limit = 40) {
+    // Try several popular Bollywood / global chart queries
+    const queries = ['top hindi hits 2024', 'bollywood hits', 'top songs 2024', 'arijit singh hits'];
+    for (const q of queries) {
+      try {
+        const results = await jiosaavn.search(q, limit);
+        if (results && results.length >= 6) return results;
+      } catch (e) {}
+    }
+    return [];
+  },
+
+  // Try to find a full-song match for a preview-only track
+  async upgradeToFullSong(track) {
+    try {
+      const results = await jiosaavn.search(`${track.title} ${track.artist}`, 5);
+      if (!results || !results.length) return null;
+      // Pick the closest match by title similarity
+      const titleLower = track.title.toLowerCase();
+      const match = results.find(r =>
+        r.title.toLowerCase().includes(titleLower) ||
+        titleLower.includes(r.title.toLowerCase())
+      ) || results[0];
+      return match || null;
+    } catch (e) {
+      return null;
+    }
   }
 };
 
@@ -348,6 +393,7 @@ function mapJioSaavnTrack(t) {
   const downloadUrls = t.downloadUrl || [];
   const genre = normalizeGenre(t.language || 'Bollywood');
   const mood = guessMood(t);
+  const url = getDownloadUrl(downloadUrls);
 
   return {
     id: `js_${t.id}`,
@@ -359,8 +405,9 @@ function mapJioSaavnTrack(t) {
     coverMedium: getImageUrl(images, 1) || '/placeholder.svg',
     coverLarge: getImageUrl(images, 2) || getImageUrl(images, 1) || '/placeholder.svg',
     duration: t.duration || 180,
-    previewUrl: getDownloadUrl(downloadUrls) || null,
+    previewUrl: url || null,
     source: 'jiosaavn',
+    isFullSong: !!url,     // JioSaavn provides full songs!
     genre: genre,
     mood: mood,
     tempo: 100,
@@ -458,15 +505,23 @@ function generateFallbackVideos(query) {
 // ---- Combined Search Across All Sources ----
 export async function searchAll(query) {
   if (!query || !query.trim()) {
+    // For home screen: JioSaavn top charts first for full songs
+    try {
+      const saavnTop = await jiosaavn.getTopCharts(30);
+      if (saavnTop && saavnTop.length >= 6) {
+        return { songs: saavnTop, videos: generateFallbackVideos('') };
+      }
+    } catch (e) {}
     return { songs: CURATED_HITS, videos: generateFallbackVideos('') };
   }
 
   const cleanQuery = query.trim();
 
-  const [itunesRes, saavnRes, deezerRes, ytRes] = await Promise.allSettled([
-    itunes.search(cleanQuery, 20),
-    jiosaavn.search(cleanQuery, 10),
-    deezer.search(cleanQuery, 10),
+  // Run all sources in parallel — JioSaavn first for full songs
+  const [saavnRes, itunesRes, deezerRes, ytRes] = await Promise.allSettled([
+    jiosaavn.search(cleanQuery, 20),   // Full songs — primary
+    itunes.search(cleanQuery, 15),     // 30s previews — secondary
+    deezer.search(cleanQuery, 10),     // 30s previews — tertiary
     youtube.search(cleanQuery, 8),
   ]);
 
@@ -485,8 +540,9 @@ export async function searchAll(query) {
     }
   };
 
-  if (itunesRes.status === 'fulfilled') addUnique(itunesRes.value);
+  // Priority: JioSaavn (full) → iTunes (preview) → Deezer (preview)
   if (saavnRes.status === 'fulfilled') addUnique(saavnRes.value);
+  if (itunesRes.status === 'fulfilled') addUnique(itunesRes.value);
   if (deezerRes.status === 'fulfilled') addUnique(deezerRes.value);
 
   // If search returned nothing from remote, search curated list

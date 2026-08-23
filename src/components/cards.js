@@ -28,6 +28,9 @@ export function renderCardRow(tracks, containerId) {
  */
 function renderCard(track, index) {
   const isPlaying = store.get('currentTrack')?.id === track.id && store.get('isPlaying');
+  const fullSongBadge = track.isFullSong
+    ? `<span class="song-badge song-badge--full" title="Full song">FULL</span>`
+    : `<span class="song-badge song-badge--preview" title="30 second preview">30s</span>`;
   return `
     <div class="card" style="width:150px;" data-track-id="${track.id}" data-index="${index}">
       <div class="card-cover">
@@ -37,6 +40,7 @@ function renderCard(track, index) {
         <button class="btn-play" aria-label="Play ${escapeHtml(track.title)}">
           ${isPlaying ? icon('pause', 20) : icon('play', 20)}
         </button>
+        ${fullSongBadge}
       </div>
       <div class="card-info">
         <div class="card-title text-ellipsis">${escapeHtml(track.title)}</div>
@@ -90,6 +94,10 @@ function renderTrackItem(track, index, showNumber, currentTrackId) {
         <div class="track-artist text-ellipsis">${escapeHtml(track.artist)}</div>
       </div>
       <div class="track-item-actions">
+        ${track.isFullSong
+          ? `<span class="song-badge song-badge--full song-badge--sm" title="Full song">FULL</span>`
+          : `<span class="song-badge song-badge--preview song-badge--sm" title="30 second preview">30s</span>`
+        }
         <span class="track-duration">${dur}</span>
         <button class="btn-icon-sm like-btn ${isLiked ? 'liked' : ''}" 
                 data-like-id="${track.id}" aria-label="Like">
