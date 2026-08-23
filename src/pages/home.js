@@ -3,7 +3,7 @@
 // ============================================
 
 import { icon } from '../core/icons.js';
-import { itunes, youtube, CURATED_HITS } from '../core/api.js';
+import { itunes, jiosaavn, youtube, CURATED_HITS } from '../core/api.js';
 import { store } from '../core/store.js';
 import { recommender } from '../core/recommendation.js';
 import { player } from '../core/player.js';
@@ -49,10 +49,15 @@ async function loadHomeContent() {
   if (!content) return;
 
   try {
-    const [chartTracks, videos] = await Promise.all([
-      cachedChart || itunes.getTopChart(40),
-      cachedVideos || youtube.search('top trending music videos 2024', 8),
-    ]);
+    // Try JioSaavn first for full songs, fall back to iTunes
+    let chartTracks = null;
+    try {
+      const saavnTracks = await jiosaavn.getTopCharts(40);
+      if (saavnTracks && saavnTracks.length >= 6) chartTracks = saavnTracks;
+    } catch (e) {}
+    if (!chartTracks) chartTracks = cachedChart || await itunes.getTopChart(40);
+
+    const videos = cachedVideos || await youtube.search('top trending music videos 2024', 8);
 
     const activeChart = (chartTracks && chartTracks.length) ? chartTracks : CURATED_HITS;
     const activeVideos = (videos && videos.length) ? videos : [];
@@ -69,7 +74,7 @@ async function loadHomeContent() {
     const quickPicks = getQuickPicks(recentlyPlayed, likedSongs, activeChart);
     if (quickPicks.length > 0) {
       html += `
-        <section class="page-section animate-fade-in-up" style="animation-delay: 0.05s">
+        <section class="page-section">
           <div class="quick-picks-grid" id="quick-picks-container" 
                style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 var(--space-4);">
             ${quickPicks.slice(0, 6).map(track => `
@@ -86,10 +91,10 @@ async function loadHomeContent() {
       `;
     }
 
-    // 2. Made For You (Algorithm-curated tracks)
+    // 2. Made For You
     const recommended = recommender.recommend(activeChart, recentlyPlayed[0] || null, 12);
     html += `
-      <section class="page-section animate-fade-in-up" style="animation-delay: 0.1s">
+      <section class="page-section">
         <div class="section-header">
           <h2 class="section-title">${icon('sparkles', 20)} Made For You</h2>
         </div>
@@ -97,9 +102,9 @@ async function loadHomeContent() {
       </section>
     `;
 
-    // 3. Trending Now (Top 5 List with live equalizers)
+    // 3. Trending Now
     html += `
-      <section class="page-section animate-fade-in-up" style="animation-delay: 0.15s">
+      <section class="page-section">
         <div class="section-header">
           <h2 class="section-title">${icon('trending', 20)} Trending Now</h2>
         </div>
@@ -110,7 +115,7 @@ async function loadHomeContent() {
     // 4. Music Videos (YouTube)
     if (activeVideos.length > 0) {
       html += `
-        <section class="page-section animate-fade-in-up" style="animation-delay: 0.2s">
+        <section class="page-section">
           <div class="section-header">
             <h2 class="section-title">${icon('video', 20)} Music Videos</h2>
           </div>
@@ -122,7 +127,7 @@ async function loadHomeContent() {
     // 5. Recently Played (if any)
     if (recentlyPlayed.length > 0) {
       html += `
-        <section class="page-section animate-fade-in-up" style="animation-delay: 0.25s">
+        <section class="page-section">
           <div class="section-header">
             <h2 class="section-title">${icon('clock', 20)} Jump Back In</h2>
           </div>
@@ -133,7 +138,7 @@ async function loadHomeContent() {
 
     // 6. Top Global Hits
     html += `
-      <section class="page-section animate-fade-in-up" style="animation-delay: 0.3s">
+      <section class="page-section">
         <div class="section-header">
           <h2 class="section-title">${icon('trending', 20)} Top Global Hits</h2>
         </div>

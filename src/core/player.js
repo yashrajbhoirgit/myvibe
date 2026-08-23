@@ -62,16 +62,18 @@ class Player {
 
   _startProgressTracking() {
     this._stopProgressTracking();
-    const update = () => {
+    this._progressInterval = setInterval(() => {
       if (!this.audio.paused) {
         store.set('progress', this.audio.currentTime);
-        this._progressRAF = requestAnimationFrame(update);
       }
-    };
-    this._progressRAF = requestAnimationFrame(update);
+    }, 250);
   }
 
   _stopProgressTracking() {
+    if (this._progressInterval) {
+      clearInterval(this._progressInterval);
+      this._progressInterval = null;
+    }
     if (this._progressRAF) {
       cancelAnimationFrame(this._progressRAF);
       this._progressRAF = null;
