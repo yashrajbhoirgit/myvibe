@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "proxy": "node yt-proxy.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -12,3 +13,4 @@
     "vite": "^8.2.0"
   }
 }
+
